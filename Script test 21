@@ -1,0 +1,165 @@
+local userInputService = game:GetService("UserInputService")
+local runService = game:GetService("RunService")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+local player = game.Players.LocalPlayer
+local TweenService = game:GetService("TweenService")
+
+local ScreenGui = player:WaitForChild("PlayerGui"):FindFirstChild("ScreenGui")
+
+if not ScreenGui then
+    warn("ScreenGui not found.")
+    return
+end
+
+local toggleButton = Instance.new("TextButton")
+toggleButton.Parent = ScreenGui
+toggleButton.Size = UDim2.new(0, 100, 0, 50)
+toggleButton.Position = UDim2.new(1, -110, 0, 200)
+toggleButton.Text = "Toggle"
+toggleButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+toggleButton.TextColor3 = Color3.fromRGB(220, 220, 220)
+toggleButton.Font = Enum.Font.SourceSans
+toggleButton.TextSize = 24
+
+local uiCorner = Instance.new("UICorner")
+uiCorner.CornerRadius = UDim.new(0, 10)
+uiCorner.Parent = toggleButton
+
+local smallButton = Instance.new("TextButton")
+smallButton.Parent = ScreenGui
+smallButton.Size = UDim2.new(0, 30, 0, 30)
+smallButton.Position = UDim2.new(1, -140, 0, 210)
+smallButton.Text = ">"
+smallButton.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+smallButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+smallButton.Font = Enum.Font.SourceSans
+smallButton.TextSize = 24
+
+local changeClickPosButton = Instance.new("TextButton")
+changeClickPosButton.Parent = ScreenGui
+changeClickPosButton.Size = UDim2.new(0, 100, 0, 50)
+changeClickPosButton.Position = UDim2.new(1, -110, 0, 260)
+changeClickPosButton.Text = "Set Click Pos"
+changeClickPosButton.BackgroundColor3 = Color3.fromRGB(50, 50, 200)
+changeClickPosButton.TextColor3 = Color3.fromRGB(220, 220, 220)
+changeClickPosButton.Font = Enum.Font.SourceSans
+changeClickPosButton.TextSize = 24
+
+local uiCornerChangePos = Instance.new("UICorner")
+uiCornerChangePos.CornerRadius = UDim.new(0, 10)
+uiCornerChangePos.Parent = changeClickPosButton
+
+local function tweenButton(button, position)
+    local tweenInfo = TweenInfo.new(
+        0.5,
+        Enum.EasingStyle.Quad,
+        Enum.EasingDirection.Out
+    )
+    local tween = TweenService:Create(button, tweenInfo, {Position = position})
+    tween:Play()
+end
+
+local menu = ScreenGui:WaitForChild("Menu")
+local skillCheckFrame = menu:WaitForChild("SkillCheckFrame")
+local frame1 = skillCheckFrame:WaitForChild("Marker")
+local frame2 = skillCheckFrame:WaitForChild("GoldArea")
+
+if not (frame1 and frame2) then
+    warn("One or more elements not found.")
+    return
+end
+
+local isClosed = false
+local isScriptActive = false
+local isSettingClickPos = false
+local clickX, clickY = 580, 350
+local openPosition = UDim2.new(1, -110, 0, 200)
+local closedPosition = UDim2.new(1, 1, 0, 200)
+local openPosition1 = UDim2.new(1, -140, 0, 210)
+local closedPosition1 = UDim2.new(1, -40, 0, 210)
+local openPosition2 = UDim2.new(1, -110, 0, 260)
+local closedPosition2 = UDim2.new(1, 1, 0, 260)
+local timeElapsed = 0
+local checkInterval = 0.01
+
+local function clickAt(x, y)
+    if skillCheckFrame.Visible then
+        VirtualInputManager:SendMouseButtonEvent(
+            x,
+            y,
+            0,
+            true,
+            game,
+            0
+        )
+        VirtualInputManager:SendMouseButtonEvent(
+            x,
+            y,
+            0,
+            false,
+            game,
+            0
+        )
+    end
+end
+
+local function checkFramesPosition()
+    local frame1X = frame1.AbsolutePosition.X
+    local frame2X = frame2.AbsolutePosition.X
+    local minRange = frame2X
+    local maxRange = frame2X + 10
+    
+    if frame1X >= minRange and frame1X <= maxRange then
+        clickAt(clickX, clickY)
+    end
+end
+
+smallButton.MouseButton1Click:Connect(function()
+    if isClosed then
+        tweenButton(toggleButton, openPosition)
+        tweenButton(smallButton, openPosition1)
+        tweenButton(changeClickPosButton, openPosition2)
+        smallButton.Text = ">"
+    else
+        tweenButton(toggleButton, closedPosition)
+        tweenButton(smallButton, closedPosition1)
+        tweenButton(changeClickPosButton, closedPosition2)
+        smallButton.Text = "<"
+    end
+    isClosed = not isClosed
+end)
+
+toggleButton.MouseButton1Click:Connect(function()
+    isScriptActive = not isScriptActive
+    if isScriptActive then
+        toggleButton.BackgroundColor3 = Color3.fromRGB(120, 200, 120)
+    else
+        toggleButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+    end
+end)
+
+changeClickPosButton.MouseButton1Click:Connect(function()
+    isSettingClickPos = true
+    changeClickPosButton.Text = "Click a Position"
+end)
+
+userInputService.InputBegan:Connect(function(input, gameProcessedEvent)
+    if isSettingClickPos and not gameProcessedEvent then
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            local mousePos = userInputService:GetMouseLocation()
+            clickX, clickY = mousePos.X, mousePos.Y
+            isSettingClickPos = false
+            changeClickPosButton.Text = "Set Click Pos"
+        end
+    end
+end)
+
+runService.Heartbeat:Connect(function(deltaTime)
+    if isScriptActive then
+        timeElapsed = timeElapsed + deltaTime
+        if timeElapsed >= checkInterval then
+            checkFramesPosition()
+            timeElapsed = 0
+        end
+    end
+end)
